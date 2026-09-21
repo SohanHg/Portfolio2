@@ -16,6 +16,94 @@ export default function CinematicVideo() {
     const video = videoRef.current;
     if (!video) return;
 
+    // Detect mobile / touch device
+    const isMobile =
+      typeof window !== "undefined" &&
+      (window.innerWidth < 768 ||
+        window.matchMedia("(hover: none)").matches ||
+        window.matchMedia("(pointer: coarse)").matches ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        ));
+
+    // Ensure audio is muted imperatively so mobile browsers permit playback
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+
+    // ----------------------------------------------------
+    // MOBILE STRATEGY: Smooth Autoplaying Cinematic Loop
+    // ----------------------------------------------------
+    if (isMobile) {
+      video.loop = true;
+
+      const attemptPlay = () => {
+        const promise = video.play();
+        if (promise !== undefined) {
+          promise.catch(() => {
+            // If autoplay was temporarily blocked by low power mode or browser policy,
+            // unlock and play on first touch or scroll interaction
+            const unlockOnInteraction = () => {
+              video.play().catch(() => {});
+              window.removeEventListener("touchstart", unlockOnInteraction);
+              window.removeEventListener("scroll", unlockOnInteraction);
+            };
+            window.addEventListener("touchstart", unlockOnInteraction, {
+              once: true,
+              passive: true,
+            });
+            window.addEventListener("scroll", unlockOnInteraction, {
+              once: true,
+              passive: true,
+            });
+          });
+        }
+      };
+
+      video.addEventListener("loadedmetadata", attemptPlay, { once: true });
+      video.addEventListener("canplay", attemptPlay, { once: true });
+      if (video.readyState >= 1) {
+        attemptPlay();
+      }
+
+      // Keep fixed container clean and stable (zero 3D tilt overhead on mobile GPU)
+      if (containerRef.current) {
+        containerRef.current.style.transform = "scale(1.02)";
+      }
+
+      // Scroll progress bar listener (lightweight passive DOM update)
+      const onMobileScroll = () => {
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const scrollHeight =
+          document.documentElement.scrollHeight - window.innerHeight;
+        if (scrollHeight > 0 && progressRef.current) {
+          const pct = Math.max(0, Math.min(1, scrollTop / scrollHeight)) * 100;
+          progressRef.current.style.width = `${pct}%`;
+        }
+      };
+
+      window.addEventListener("scroll", onMobileScroll, { passive: true });
+      onMobileScroll();
+
+      // Pause when tab is backgrounded to preserve battery
+      const onVisibilityChange = () => {
+        if (document.hidden) {
+          video.pause();
+        } else {
+          video.play().catch(() => {});
+        }
+      };
+      document.addEventListener("visibilitychange", onVisibilityChange);
+
+      return () => {
+        window.removeEventListener("scroll", onMobileScroll);
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+      };
+    }
+
+    // ----------------------------------------------------
+    // DESKTOP STRATEGY: Cursor Parallax & Scroll-Scrubbing
+    // ----------------------------------------------------
     const handleReady = () => {
       if (readyRef.current) return;
       readyRef.current = true;
@@ -28,51 +116,19 @@ export default function CinematicVideo() {
     video.addEventListener("loadedmetadata", handleReady);
     video.addEventListener("canplay", handleReady);
     video.addEventListener("canplaythrough", handleReady);
-
     if (video.readyState >= 1) handleReady();
 
-    return () => {
-      video.removeEventListener("loadedmetadata", handleReady);
-      video.removeEventListener("canplay", handleReady);
-      video.removeEventListener("canplaythrough", handleReady);
-    };
-  }, []);
-
-  useEffect(() => {
-    // --- Mouse: ONLY controls 3D parallax tilt + red glow (NOT video time) ---
+    // Mouse: controls 3D parallax tilt + red glow
     const onMouseMove = (e: MouseEvent) => {
       const mx = e.clientX / window.innerWidth;
       const my = e.clientY / window.innerHeight;
 
-      // 3D parallax tilt on full-bleed video container (covers entire browser)
       if (containerRef.current) {
         const dx = mx * 2 - 1;
         const dy = my * 2 - 1;
-        containerRef.current.style.transform =
-          `scale(1.05) translate3d(${dx * -10}px, ${dy * -10}px, 0) rotateX(${dy * -1}deg) rotateY(${dx * 1}deg)`;
-      }
-
-      // Cursor-tracking red spotlight
-      const glow = document.getElementById("cine-glow");
-      if (glow) {
-        const xp = mx * 100;
-        const yp = my * 100;
-        glow.style.background = `radial-gradient(at ${xp}% ${yp}%, rgba(196,0,36,0.18), transparent 70%)`;
-      }
-    };
-
-    // --- Touch Move: update parallax and ambient glow on smartphones and tablets ---
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 0) return;
-      const touch = e.touches[0];
-      const mx = touch.clientX / window.innerWidth;
-      const my = touch.clientY / window.innerHeight;
-
-      if (containerRef.current) {
-        const dx = mx * 2 - 1;
-        const dy = my * 2 - 1;
-        containerRef.current.style.transform =
-          `scale(1.05) translate3d(${dx * -8}px, ${dy * -8}px, 0) rotateX(${dy * -1}deg) rotateY(${dx * 1}deg)`;
+        containerRef.current.style.transform = `scale(1.05) translate3d(${
+          dx * -10
+        }px, ${dy * -10}px, 0) rotateX(${dy * -1}deg) rotateY(${dx * 1}deg)`;
       }
 
       const glow = document.getElementById("cine-glow");
@@ -83,67 +139,54 @@ export default function CinematicVideo() {
       }
     };
 
-    // --- Device Orientation (Gyroscope): ambient tilt when holding phone/tablet ---
-    const onDeviceOrientation = (e: DeviceOrientationEvent) => {
-      if (e.gamma === null || e.beta === null) return;
-      const dx = Math.max(-1, Math.min(1, e.gamma / 35));
-      const dy = Math.max(-1, Math.min(1, (e.beta - 45) / 35));
-      if (containerRef.current) {
-        containerRef.current.style.transform =
-          `scale(1.05) translate3d(${dx * -8}px, ${dy * -8}px, 0) rotateX(${dy * -1}deg) rotateY(${dx * 1}deg)`;
-      }
-    };
-
-    // --- Scroll: controls video time (100% scroll-driven, section-based) ---
+    // Scroll: controls video time
     const onScroll = () => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
       if (scrollHeight > 0) {
         scrollYRef.current = Math.max(0, Math.min(1, scrollTop / scrollHeight));
       }
 
-      // Update scroll progress bar
       if (progressRef.current) {
         progressRef.current.style.width = `${scrollYRef.current * 100}%`;
       }
     };
 
     window.addEventListener("mousemove", onMouseMove, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    if (typeof window !== "undefined" && window.DeviceOrientationEvent) {
-      window.addEventListener("deviceorientation", onDeviceOrientation, { passive: true });
-    }
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
 
-    // --- requestAnimationFrame LERP loop (scroll-only video scrubbing) ---
     let rafId: number;
 
     const tick = () => {
-      const video = videoRef.current;
-
-      if (video && readyRef.current && video.duration && isFinite(video.duration) && video.duration > 0) {
-        const dur = video.duration;
-
-        // Video time is 100% driven by scroll position through sections
+      const v = videoRef.current;
+      if (
+        v &&
+        readyRef.current &&
+        v.duration &&
+        isFinite(v.duration) &&
+        v.duration > 0
+      ) {
+        const dur = v.duration;
         targetRef.current = scrollYRef.current * dur;
 
-        // Clamp to valid range
         if (targetRef.current < 0) targetRef.current = 0;
         if (targetRef.current > dur - 0.01) targetRef.current = dur - 0.01;
 
-        // Faster LERP factor (0.15) for snappier response
         currentRef.current += (targetRef.current - currentRef.current) * 0.15;
 
-        // Seek when difference exceeds threshold
-        if (Math.abs(currentRef.current - video.currentTime) > 0.001) {
+        // Only seek when difference exceeds threshold and decoder isn't busy
+        if (
+          !v.seeking &&
+          Math.abs(currentRef.current - v.currentTime) > 0.002
+        ) {
           try {
-            video.currentTime = currentRef.current;
+            v.currentTime = currentRef.current;
           } catch {}
         }
 
-        // Ensure video stays paused
-        if (!video.paused) video.pause();
+        if (!v.paused) v.pause();
       }
 
       rafId = requestAnimationFrame(tick);
@@ -152,9 +195,10 @@ export default function CinematicVideo() {
     rafId = requestAnimationFrame(tick);
 
     return () => {
+      video.removeEventListener("loadedmetadata", handleReady);
+      video.removeEventListener("canplay", handleReady);
+      video.removeEventListener("canplaythrough", handleReady);
       window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("deviceorientation", onDeviceOrientation);
       window.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(rafId);
     };
@@ -201,12 +245,13 @@ export default function CinematicVideo() {
             ref={videoRef}
             playsInline
             muted
+            loop
+            autoPlay
             preload="auto"
             className="w-full h-full object-cover"
             style={{
               opacity: 0.65,
               objectPosition: "center 28%",
-              touchAction: "pan-y",
             }}
           >
             <source src="/video/portfolio-background.mp4" type="video/mp4" />

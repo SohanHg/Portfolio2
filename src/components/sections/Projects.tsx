@@ -81,41 +81,14 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
     setSpotlight(prev => ({ ...prev, opacity: 0 }));
   };
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!cardRef.current || e.touches.length === 0) return;
+  const handleTouchStart = () => {
     setIsHovered(true);
-    const rect = cardRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = ((y - centerY) / centerY) * -8;
-    const rotateY = ((x - centerX) / centerX) * 8;
-    setTilt({ x: rotateX, y: rotateY });
-    setSpotlight({ x, y, opacity: 1 });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!cardRef.current || e.touches.length === 0) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = ((y - centerY) / centerY) * -8;
-    const rotateY = ((x - centerX) / centerX) * 8;
-    setTilt({ x: rotateX, y: rotateY });
-    setSpotlight({ x, y, opacity: 1 });
   };
 
   const handleTouchEnd = () => {
     setTimeout(() => {
       setIsHovered(false);
-      setTilt({ x: 0, y: 0 });
-      setSpotlight(prev => ({ ...prev, opacity: 0 }));
-    }, 500);
+    }, 400);
   };
 
   return (
@@ -133,7 +106,6 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}

@@ -8,6 +8,19 @@ export default function LenisProvider({ children }: { children: React.ReactNode 
   const reqIdRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // On mobile and touch screens, native momentum scrolling is hardware-accelerated
+    // by the browser compositor at 60/120Hz. We only run Lenis smooth wheel on desktop.
+    const isTouch =
+      typeof window !== "undefined" &&
+      (window.innerWidth < 768 ||
+        window.matchMedia("(hover: none)").matches ||
+        window.matchMedia("(pointer: coarse)").matches ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+
+    if (isTouch) {
+      return;
+    }
+
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
