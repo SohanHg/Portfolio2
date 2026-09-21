@@ -19,14 +19,15 @@ export default function Hero() {
 
   return (
     <section id="home" className="relative min-h-[85vh] lg:min-h-screen flex items-center overflow-hidden w-full py-16 lg:py-0">
-      {/* Background Watermark - Spans horizontally across the website length, positioned behind headline */}
-      <div className="absolute inset-x-0 top-[22%] sm:top-[24%] lg:top-[26%] flex items-center justify-center pointer-events-none z-0 overflow-hidden select-none w-full -translate-y-1/2">
+      {/* Background Watermark - Sits below the neck level, styled exactly like reference image */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden select-none w-full">
         <h1 
-          className="text-[clamp(4.5rem,14vw,17.5vw)] font-oswald font-black select-none tracking-[0.2em] sm:tracking-[0.26em] md:tracking-[0.3em] opacity-35 whitespace-nowrap leading-none"
+          className="text-[clamp(7rem,19vw,23vw)] font-oswald font-black select-none tracking-[0.1em] sm:tracking-[0.13em] md:tracking-[0.16em] opacity-40 whitespace-nowrap leading-none"
           style={{
-            WebkitTextStroke: '2px rgba(255, 70, 90, 0.6)',
-            color: 'rgba(255, 255, 255, 0.02)',
-            textShadow: '0 0 45px rgba(196, 0, 36, 0.3)',
+            WebkitTextStroke: '1.5px rgba(224, 0, 42, 0.45)',
+            color: 'transparent',
+            textShadow: '0 0 25px rgba(196, 0, 36, 0.2)',
+            transform: 'translateY(42%)'
           }}
         >
           SOHAN
@@ -63,8 +64,8 @@ export default function Hero() {
             </div>
           </motion.div>
 
-          {/* Telemetry Row - Positioned cleanly below the SOHAN watermark */}
-          <motion.div variants={itemVars} className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-7 mb-8 mt-4 sm:mt-6 font-mono border-t border-b border-white/10 py-4 sm:py-5 max-w-2xl">
+          {/* Telemetry Row */}
+          <motion.div variants={itemVars} className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-7 mb-8 font-mono border-t border-b border-white/10 py-4 sm:py-5 max-w-2xl">
             <div className="flex flex-col gap-0.5">
               <span className="text-gray-500 tracking-wider text-[11px] sm:text-xs">CGPA</span>
               <span className="text-xl sm:text-2xl font-bold text-[var(--accent-red)]">7.75</span>
